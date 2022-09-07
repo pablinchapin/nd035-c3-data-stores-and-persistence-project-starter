@@ -38,18 +38,23 @@ public class UserController {
 
     @PostMapping("/customer")
     public CustomerDTO saveCustomer(@RequestBody CustomerDTO customerDTO){
-        List<Pet> petList = customerDTO.getPetIds()
-            .stream()
-            .map(petService::read)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .collect(Collectors.toList());
-
         Customer customer = new Customer();
         customer.setName(customerDTO.getName());
         customer.setPhone(customerDTO.getPhoneNumber());
-        customer.setNotes(customerDTO.getNotes());
-        customer.setPetList(petList);
+
+        if(customerDTO.getNotes() != null) { customer.setNotes(customerDTO.getNotes()); }
+
+        if(customerDTO.getPetIds() != null ) {
+            List<Pet> petList = customerDTO.getPetIds()
+                .stream()
+                .map(petService::read)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+
+            customer.setPetList(petList);
+        }
+
 
         return map(customerService.create(customer));
     }
@@ -105,13 +110,16 @@ public class UserController {
         CustomerDTO customerDTO = new CustomerDTO();
         customerDTO.setId(customer.getId());
         customerDTO.setName(customer.getName());
-        customerDTO.setPhoneNumber(customer.getPhone());
-        customerDTO.setNotes(customer.getNotes());
-        customerDTO.setPetIds(customer.getPetList()
-            .stream()
-            .map(Pet::getId)
-            .collect(Collectors.toList())
-        );
+        if(customer.getPhone() != null) { customerDTO.setPhoneNumber(customer.getPhone()); }
+        if(customer.getNotes() != null) { customerDTO.setNotes(customer.getNotes()); }
+        if(customer.getPetList() != null){
+            customerDTO.setPetIds(customer.getPetList()
+                .stream()
+                .map(Pet::getId)
+                .collect(Collectors.toList())
+            );
+        }
+
         return customerDTO;
     }
     
