@@ -1,5 +1,14 @@
 package com.udacity.jdnd.course3.critter.user;
 
+import com.udacity.jdnd.course3.critter.entity.Customer;
+import com.udacity.jdnd.course3.critter.entity.Employee;
+import com.udacity.jdnd.course3.critter.entity.Pet;
+import com.udacity.jdnd.course3.critter.service.CustomerService;
+import com.udacity.jdnd.course3.critter.service.EmployeeService;
+import com.udacity.jdnd.course3.critter.service.PetService;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.DayOfWeek;
@@ -16,39 +25,103 @@ import java.util.Set;
 @RequestMapping("/user")
 public class UserController {
 
+    private final CustomerService customerService;
+    private final EmployeeService employeeService;
+    private final PetService petService;
+
+    public UserController(CustomerService customerService, EmployeeService employeeService,
+        PetService petService) {
+        this.customerService = customerService;
+        this.employeeService = employeeService;
+        this.petService = petService;
+    }
+
     @PostMapping("/customer")
     public CustomerDTO saveCustomer(@RequestBody CustomerDTO customerDTO){
-        throw new UnsupportedOperationException();
+        List<Pet> petList = customerDTO.getPetIds()
+            .stream()
+            .map(petService::read)
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .collect(Collectors.toList());
+
+        Customer customer = new Customer();
+        customer.setName(customerDTO.getName());
+        customer.setPhone(customerDTO.getPhoneNumber());
+        customer.setNotes(customerDTO.getNotes());
+        customer.setPetList(petList);
+
+        return map(customerService.create(customer));
     }
 
     @GetMapping("/customer")
     public List<CustomerDTO> getAllCustomers(){
-        throw new UnsupportedOperationException();
+        Iterable<Customer> customers = customerService.readAll();
+        return StreamSupport.stream(customers.spliterator(), false)
+            .map(UserController::map)
+            .collect(Collectors.toList());
     }
 
     @GetMapping("/customer/pet/{petId}")
     public CustomerDTO getOwnerByPet(@PathVariable long petId){
+        Optional<Customer> customer = customerService.getOwnerByPetId(petId);
+        if(customer.isPresent()){
+            return map(customer.get());
+        }
         throw new UnsupportedOperationException();
     }
 
     @PostMapping("/employee")
     public EmployeeDTO saveEmployee(@RequestBody EmployeeDTO employeeDTO) {
-        throw new UnsupportedOperationException();
+        Employee employee = new Employee();
+        employee.setName(employeeDTO.getName());
+        employee.setSkillSet(employeeDTO.getSkills());
+        employee.setDaysSet(employeeDTO.getDaysAvailable());
+
+        return map(employeeService.create(employee));
     }
 
     @PostMapping("/employee/{employeeId}")
     public EmployeeDTO getEmployee(@PathVariable long employeeId) {
+        Optional<Employee> employee = employeeService.read(employeeId);
+        if(employee.isPresent()){
+            return map(employee.get());
+        }
         throw new UnsupportedOperationException();
     }
 
     @PutMapping("/employee/{employeeId}")
     public void setAvailability(@RequestBody Set<DayOfWeek> daysAvailable, @PathVariable long employeeId) {
-        throw new UnsupportedOperationException();
+        employeeService.setEmployeeAvailability(daysAvailable, employeeId);
     }
 
     @GetMapping("/employee/availability")
     public List<EmployeeDTO> findEmployeesForService(@RequestBody EmployeeRequestDTO employeeDTO) {
-        throw new UnsupportedOperationException();
+        List<Employee> employees = employeeService.findEmployeesAvailableAndQualified(employeeDTO.getDate(), employeeDTO.getSkills());
+        return employees.stream().map(UserController::map).collect(Collectors.toList());
+    }
+
+    private static CustomerDTO map(Customer customer){
+        CustomerDTO customerDTO = new CustomerDTO();
+        customerDTO.setId(customer.getId());
+        customerDTO.setName(customer.getName());
+        customerDTO.setPhoneNumber(customer.getPhone());
+        customerDTO.setNotes(customer.getNotes());
+        customerDTO.setPetIds(customer.getPetList()
+            .stream()
+            .map(Pet::getId)
+            .collect(Collectors.toList())
+        );
+        return customerDTO;
+    }
+    
+    private static EmployeeDTO map(Employee employee){
+        EmployeeDTO employeeDTO = new EmployeeDTO();
+        employeeDTO.setId(employee.getId());
+        employeeDTO.setName(employee.getName());
+        employeeDTO.setSkills(employee.getSkillSet());
+        employeeDTO.setDaysAvailable(employee.getDaysSet());
+        return employeeDTO;
     }
 
 }
